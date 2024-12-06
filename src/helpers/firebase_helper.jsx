@@ -53,10 +53,11 @@ class FirebaseAuthBackend {
       this.updateUserFirestore(user)
       .then((result)=> {
         resolve(result)
-      })
-      .catch((error) => {
-        reject(this._handleError(error));
-      });
+        })
+        .catch((error) => {
+          console.error("Erro durante as atualizações:", error.message);
+          reject(this._handleError(error));
+        });
     });
   };
 
@@ -155,7 +156,7 @@ class FirebaseAuthBackend {
     const collection = firebase.firestore().collection("users");
     const details = {
       name: user.name,
-      email: user.email,
+      // email: user.email,
       lastName: user.lastName,
       phone: user.phone,
       createdDtm: firebase.firestore.FieldValue.serverTimestamp(),

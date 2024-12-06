@@ -47,8 +47,7 @@ function* editProfile({ payload: { user } }) {
     if (import.meta.env.VITE_APP_DEFAULTAUTH === "firebase") {
       const response = yield call(
         fireBaseBackend.editProfileAPI,
-        user.username,
-        user.idx
+        user
       )
       yield put(profileSuccess(response))
     } else if (import.meta.env.VITE_APP_DEFAULTAUTH === "jwt") {
