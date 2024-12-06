@@ -1,10 +1,15 @@
-import usFlag from "../assets/images/flags/us.jpg"
-import spain from "../assets/images/flags/spain.jpg"
-import germany from "../assets/images/flags/germany.jpg"
-import italy from "../assets/images/flags/italy.jpg"
-import russia from "../assets/images/flags/russia.jpg"
+import usFlag from "../assets/images/flags/us.jpg";
+import spain from "../assets/images/flags/spain.jpg";
+import germany from "../assets/images/flags/germany.jpg";
+import italy from "../assets/images/flags/italy.jpg";
+import russia from "../assets/images/flags/russia.jpg";
+import brazil from "../assets/images/flags/brazil.jpg";
 
 const languages = {
+  pt: {
+    label: "Português",
+    flag: brazil,
+  },
   sp: {
     label: "Spanish",
     flag: spain,
@@ -25,6 +30,6 @@ const languages = {
     label: "English",
     flag: usFlag,
   },
-}
+};
 
-export default languages
+export default languages;
