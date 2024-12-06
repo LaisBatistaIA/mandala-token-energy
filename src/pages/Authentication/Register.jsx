@@ -1,5 +1,17 @@
+import PropTypes from "prop-types";
 import React, { useEffect } from "react";
-import { Row, Col, CardBody, Card, Alert, Container, Input, Label, Form, FormFeedback } from "reactstrap";
+import {
+  Row,
+  Col,
+  CardBody,
+  Card,
+  Alert,
+  Container,
+  Input,
+  Label,
+  Form,
+  FormFeedback,
+} from "reactstrap";
 
 // Formik Validation
 import * as Yup from "yup";
@@ -12,35 +24,51 @@ import { registerUser, apiError } from "/src/store/actions";
 import { useSelector, useDispatch } from "react-redux";
 import { createSelector } from "reselect";
 
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // import images
 import profileImg from "../../assets/images/profile-img.png";
 import logo from "../../assets/images/logo.svg";
 import lightlogo from "../../assets/images/logo-light.svg";
 
-const Register = () => {
+import { withTranslation } from "react-i18next";
+
+const Register = (props) => {
   document.title = "Register | Skote - Vite React Admin & Dashboard Template";
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const validation = useFormik({
     // enableReinitialize : use this flag when initial values needs to be changed
     enableReinitialize: true,
 
     initialValues: {
-      email: '',
-      username: '',
-      password: '',
+      email: "",
+      name: "",
+      lastName: "",
+      password: "",
+      phone: "",
     },
     validationSchema: Yup.object({
       email: Yup.string().required("Please Enter Your Email"),
-      username: Yup.string().required("Please Enter Your Username"),
-      password: Yup.string().required("Please Enter Your Password"),
+      name: Yup.string().required("Please Enter Your Name").max(30),
+      lastName: Yup.string().required("Please Enter Your Last Name").max(100),
+      phone: Yup.string().required("Please Enter Your Phone"),
+      password: Yup.string()
+        .required("Please Enter Your Password")
+        .min(8, "Password must be at least 8 characters long")
+        .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
+        .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+        .matches(/[0-9]/, "Password must contain at least one number")
+        .matches(
+          /[!@#$%^&*(),.?":{}|<>]/,
+          "Password must contain at least one special character"
+        ),
     }),
     onSubmit: (values) => {
       dispatch(registerUser(values));
-    }
+    },
   });
 
   const AccountProperties = createSelector(
@@ -59,12 +87,14 @@ const Register = () => {
   } = useSelector(AccountProperties);
 
   useEffect(() => {
+    if (user) {
+      setTimeout(() => navigate("/"), 5000); // Redireciona após 5 segundos
+    }
     dispatch(apiError(""));
-  }, []);
+  }, [user, navigate, dispatch]);
 
   return (
     <React.Fragment>
-
       <div className="home-btn d-none d-sm-block">
         <Link to="/" className="text-dark">
           <i className="bx bx-home h2" />
@@ -79,8 +109,10 @@ const Register = () => {
                   <Row>
                     <Col className="col-7">
                       <div className="text-primary p-4">
-                        <h5 className="text-primary">Free Register</h5>
-                        <p>Get your free Skote account now.</p>
+                        <h5 className="text-primary">
+                          {props.t("Free Register")}
+                        </h5>
+                        <p>{props.t("Get your free Mandala account now.")}</p>
                       </div>
                     </Col>
                     <Col className="col-5 align-self-end">
@@ -126,7 +158,17 @@ const Register = () => {
                     >
                       {user && user ? (
                         <Alert color="success">
-                          Register User Successfully
+                          {props
+                            .t(
+                              "Register User Successfully. \nCheck your inbox to confirm your email and unlock all features!"
+                            )
+                            .split("\n")
+                            .map((line, index) => (
+                              <span key={index}>
+                                {line}
+                                <br />
+                              </span>
+                            ))}
                         </Alert>
                       ) : null}
 
@@ -146,46 +188,111 @@ const Register = () => {
                           onBlur={validation.handleBlur}
                           value={validation.values.email || ""}
                           invalid={
-                            validation.touched.email && validation.errors.email ? true : false
+                            validation.touched.email && validation.errors.email
+                              ? true
+                              : false
                           }
                         />
                         {validation.touched.email && validation.errors.email ? (
-                          <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
+                          <FormFeedback type="invalid">
+                            {validation.errors.email}
+                          </FormFeedback>
                         ) : null}
                       </div>
 
                       <div className="mb-3">
-                        <Label className="form-label">Username</Label>
+                        <Label className="form-label">{props.t("Name")}</Label>
                         <Input
-                          name="username"
+                          name="name"
                           type="text"
-                          placeholder="Enter username"
+                          placeholder={props.t("Enter your name")}
                           onChange={validation.handleChange}
                           onBlur={validation.handleBlur}
-                          value={validation.values.username || ""}
+                          value={validation.values.name || ""}
                           invalid={
-                            validation.touched.username && validation.errors.username ? true : false
+                            validation.touched.name && validation.errors.name
+                              ? true
+                              : false
                           }
                         />
-                        {validation.touched.username && validation.errors.username ? (
-                          <FormFeedback type="invalid">{validation.errors.username}</FormFeedback>
+                        {validation.touched.name && validation.errors.name ? (
+                          <FormFeedback type="invalid">
+                            {validation.errors.name}
+                          </FormFeedback>
                         ) : null}
                       </div>
+
                       <div className="mb-3">
-                        <Label className="form-label">Password</Label>
+                        <Label className="form-label">
+                          {props.t("Last name")}
+                        </Label>
+                        <Input
+                          name="lastName"
+                          type="text"
+                          placeholder={props.t("Enter your last name")}
+                          onChange={validation.handleChange}
+                          onBlur={validation.handleBlur}
+                          value={validation.values.lastName || ""}
+                          invalid={
+                            validation.touched.lastName &&
+                            validation.errors.lastName
+                              ? true
+                              : false
+                          }
+                        />
+                        {validation.touched.lastName &&
+                        validation.errors.lastName ? (
+                          <FormFeedback type="invalid">
+                            {validation.errors.lastName}
+                          </FormFeedback>
+                        ) : null}
+                      </div>
+
+                      <div className="mb-3">
+                        <Label className="form-label">{props.t("Phone")}</Label>
+                        <Input
+                          name="phone"
+                          type="text"
+                          placeholder={props.t("Enter your phone")}
+                          onChange={validation.handleChange}
+                          onBlur={validation.handleBlur}
+                          value={validation.values.phone || ""}
+                          invalid={
+                            validation.touched.phone && validation.errors.phone
+                              ? true
+                              : false
+                          }
+                        />
+                        {validation.touched.phone && validation.errors.phone ? (
+                          <FormFeedback type="invalid">
+                            {validation.errors.phone}
+                          </FormFeedback>
+                        ) : null}
+                      </div>
+
+                      <div className="mb-3">
+                        <Label className="form-label">
+                          {props.t("Password")}
+                        </Label>
                         <Input
                           name="password"
                           type="password"
-                          placeholder="Enter Password"
+                          placeholder={props.t("Enter Password")}
                           onChange={validation.handleChange}
                           onBlur={validation.handleBlur}
                           value={validation.values.password || ""}
                           invalid={
-                            validation.touched.password && validation.errors.password ? true : false
+                            validation.touched.password &&
+                            validation.errors.password
+                              ? true
+                              : false
                           }
                         />
-                        {validation.touched.password && validation.errors.password ? (
-                          <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
+                        {validation.touched.password &&
+                        validation.errors.password ? (
+                          <FormFeedback type="invalid">
+                            {validation.errors.password}
+                          </FormFeedback>
                         ) : null}
                       </div>
 
@@ -194,32 +301,33 @@ const Register = () => {
                           className="btn btn-primary btn-block "
                           type="submit"
                         >
-                          Register
+                          {props.t("Register")}
                         </button>
                       </div>
 
-                      <div className="mt-4 text-center">
+                      {/* TODO: Add terms of use */}
+                      {/* <div className="mt-4 text-center">
                         <p className="mb-0">
                           By registering you agree to the Skote{" "}
                           <Link to="#" className="text-primary">
                             Terms of Use
                           </Link>
                         </p>
-                      </div>
+                      </div> */}
                     </Form>
                   </div>
                 </CardBody>
               </Card>
               <div className="mt-5 text-center">
                 <p>
-                  Already have an account ?{" "}
+                  {props.t("Already have an account")} ?{" "}
                   <Link to="/login" className="font-weight-medium text-primary">
                     {" "}
                     Login
                   </Link>{" "}
                 </p>
                 <p>
-                  © {new Date().getFullYear()} Skote. Crafted with{" "}
+                  © {new Date().getFullYear()} Mandala Token. Crafted with{" "}
                   <i className="mdi mdi-heart text-danger" /> by Themesbrand
                 </p>
               </div>
@@ -231,4 +339,9 @@ const Register = () => {
   );
 };
 
-export default Register;
+Register.propTypes = {
+  t: PropTypes.any,
+};
+
+
+export default withTranslation()(Register);

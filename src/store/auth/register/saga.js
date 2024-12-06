@@ -22,8 +22,7 @@ function* registerUser({ payload: { user } }) {
     if (import.meta.env.VITE_APP_DEFAULTAUTH === "firebase") {
       const response = yield call(
         fireBaseBackend.registerUser,
-        user.email,
-        user.password
+        user
       )
       yield put(registerUserSuccessful(response))
     } else if (import.meta.env.VITE_APP_DEFAULTAUTH === "jwt") {
