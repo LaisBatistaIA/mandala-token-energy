@@ -1,4 +1,4 @@
-import firebase from 'firebase/compat/app';
+import firebase from "firebase/compat/app";
 
 // Add the Firebase products that you want to use
 import "firebase/compat/auth";
@@ -9,7 +9,7 @@ class FirebaseAuthBackend {
     if (firebaseConfig) {
       // Initialize Firebase
       firebase.initializeApp(firebaseConfig);
-      firebase.auth().onAuthStateChanged(user => {
+      firebase.auth().onAuthStateChanged((user) => {
         if (user) {
           localStorage.setItem("authUser", JSON.stringify(user));
         } else {
@@ -22,38 +22,57 @@ class FirebaseAuthBackend {
   /**
    * Registers the user with given details
    */
-  registerUser = (email, password) => {
+  registerUser = (user) => {
+    console.log(user);
     return new Promise((resolve, reject) => {
       firebase
         .auth()
-        .createUserWithEmailAndPassword(email, password)
-        .then(
-          user => {
-            resolve(firebase.auth().currentUser);
-          },
-          error => {
-            reject(this._handleError(error));
+        .createUserWithEmailAndPassword(user.email, user.password)
+        .then(async (userCredential) => {
+          try {
+            // const userAuth = userCredential.user;
+            await userCredential.user.sendEmailVerification();
+
+            const userData = await this.addNewUserToFirestore(user); // Salva no Firestore
+            resolve(userData); // Resolve com os dados do usuário
+          } catch (error) {
+            reject("Erro ao salvar dados no Firestore: " + error);
           }
-        );
+        })
+        .catch((error) => {
+          reject(this._handleError(error)); // Trata erro de registro
+        });
     });
   };
 
   /**
    * Registers the user with given details
    */
-  editProfileAPI = (email, password) => {
+  editProfileAPI = (user) => {
     return new Promise((resolve, reject) => {
-      firebase
-        .auth()
-        .createUserWithEmailAndPassword(email, password)
-        .then(
-          user => {
-            resolve(firebase.auth().currentUser);
-          },
-          error => {
+      this.updateUserFirestore(user)
+      .then((result)=> {
+        resolve(result)
+        })
+        .catch((error) => {
+          console.error("Erro durante as atualizações:", error.message);
+          reject(this._handleError(error));
+        });
+    });
+  };
+
+  changePassword = (userPasswords) => {
+    return new Promise((resolve, reject) => {
+      if (userPasswords.currentPassword && userPasswords.newPassword) {
+        this.reauthentication(userPasswords.currentPassword)
+          .then(() => this.changePasswordRequest(userPasswords.newPassword))
+            .then(() => {
+              resolve("Succesful Change Password");
+            })
+          .catch((error) => {
             reject(this._handleError(error));
-          }
-        );
+          });
+      }
     });
   };
 
@@ -66,12 +85,12 @@ class FirebaseAuthBackend {
         .auth()
         .signInWithEmailAndPassword(email, password)
         .then(
-          user => {
+          () => {
             resolve(firebase.auth().currentUser);
           },
-          error => {
+          (error) => {
             reject(this._handleError(error));
-          }
+          },
         );
     });
   };
@@ -79,7 +98,7 @@ class FirebaseAuthBackend {
   /**
    * forget Password user with given details
    */
-  forgetPassword = email => {
+  forgetPassword = (email) => {
     return new Promise((resolve, reject) => {
       firebase
         .auth()
@@ -90,7 +109,7 @@ class FirebaseAuthBackend {
         .then(() => {
           resolve(true);
         })
-        .catch(error => {
+        .catch((error) => {
           reject(this._handleError(error));
         });
     });
@@ -107,7 +126,7 @@ class FirebaseAuthBackend {
         .then(() => {
           resolve(true);
         })
-        .catch(error => {
+        .catch((error) => {
           reject(this._handleError(error));
         });
     });
@@ -120,37 +139,34 @@ class FirebaseAuthBackend {
   socialLoginUser = async (type) => {
     let provider;
     if (type === "google") {
-        provider = new firebase.auth.GoogleAuthProvider();
+      provider = new firebase.auth.GoogleAuthProvider();
     } else if (type === "facebook") {
-        provider = new firebase.auth.FacebookAuthProvider();
+      provider = new firebase.auth.FacebookAuthProvider();
     }
     try {
-        const result = await firebase.auth().signInWithPopup(provider);
-        const user = result.user;
-        return user;
+      const result = await firebase.auth().signInWithPopup(provider);
+      const user = result.user;
+      return user;
     } catch (error) {
-        throw this._handleError(error);
+      throw this._handleError(error);
     }
-};
-
+  };
 
   addNewUserToFirestore = (user) => {
     const collection = firebase.firestore().collection("users");
-    const { profile } = user.additionalUserInfo;
     const details = {
-      firstName: profile.given_name ? profile.given_name : profile.first_name,
-      lastName: profile.family_name ? profile.family_name : profile.last_name,
-      fullName: profile.name,
-      email: profile.email,
-      picture: profile.picture,
+      name: user.name,
+      // email: user.email,
+      lastName: user.lastName,
+      phone: user.phone,
       createdDtm: firebase.firestore.FieldValue.serverTimestamp(),
-      lastLoginTime: firebase.firestore.FieldValue.serverTimestamp()
+      lastLoginTime: firebase.firestore.FieldValue.serverTimestamp(),
     };
     collection.doc(firebase.auth().currentUser.uid).set(details);
     return { user, details };
   };
 
-  setLoggeedInUser = user => {
+  setLoggeedInUser = (user) => {
     localStorage.setItem("authUser", JSON.stringify(user));
   };
 
@@ -160,6 +176,90 @@ class FirebaseAuthBackend {
   getAuthenticatedUser = () => {
     if (!localStorage.getItem("authUser")) return null;
     return JSON.parse(localStorage.getItem("authUser"));
+  };
+
+  /**
+   * Returns if user have email verified
+   */
+  userVerifiedEmail = () => {
+    return firebase.auth().currentUser.emailVerified;
+  };
+
+  getUserData = (userId) => {
+    return new Promise((resolve, reject) => {
+      firebase
+        .firestore()
+        .collection("users")
+        .doc(userId)
+        .get()
+        .then((doc) => {
+          if (doc.exists) {
+            resolve(doc.data());
+          } else {
+            reject(new Error("Documento não encontrado."));
+          }
+        })
+        .catch((error) => {
+          reject(this._handleError(error));
+        });
+    });
+  };
+
+  updateUserFirestore(user) {
+    const userRef = firebase.firestore().collection("users").doc(user.idx); // Referência ao documento do usuário
+
+    const updatedData = {};
+
+    // Atualiza apenas os campos que foram fornecidos
+    if (user.name) updatedData.name = user.name;
+    if (user.lastName) updatedData.lastName = user.lastName;
+    if (user.phone) updatedData.phone = user.phone;
+
+    // Se algum dado foi alterado, atualiza no Firestore
+    return userRef
+      .update(updatedData)
+      .then(() => {
+        console.log("Dados do usuário atualizados com sucesso no Firestore.");
+        return "Update User Data";
+      })
+      .catch((error) => {
+        console.error(
+          "Erro ao atualizar os dados do Firestore:",
+          error.message,
+        );
+        throw error; // Lança o erro para ser tratado em outro ponto
+      });
+  }
+
+  reauthentication = (password) => {
+    const user = firebase.auth().currentUser;
+    const credential = firebase.auth.EmailAuthProvider.credential(
+      user.email,
+      password,
+    );
+
+    return user
+      .reauthenticateWithCredential(credential)
+      .then(() => {
+        console.log("Reautenticação bem-sucedida.");
+      })
+      .catch((error) => {
+        console.error("Erro de reautenticação:", error.message);
+        throw error;
+      });
+  };
+
+  changePasswordRequest = (newPassword) => {
+    firebase
+      .auth()
+      .currentUser.updatePassword(newPassword)
+      .then(() => {
+        console.log("Senha alterada com sucesso!");
+      })
+      .catch((error) => {
+        console.error("Erro ao alterar a senha:", error.message);
+        throw error;
+      });
   };
 
   /**
@@ -179,7 +279,7 @@ let _fireBaseBackend = null;
  * Initilize the backend
  * @param {*} config
  */
-const initFirebaseBackend = config => {
+const initFirebaseBackend = (config) => {
   if (!_fireBaseBackend) {
     _fireBaseBackend = new FirebaseAuthBackend(config);
   }
@@ -193,4 +293,4 @@ const getFirebaseBackend = () => {
   return _fireBaseBackend;
 };
 
-export { initFirebaseBackend, getFirebaseBackend };
+export { getFirebaseBackend, initFirebaseBackend };

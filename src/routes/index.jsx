@@ -9,6 +9,7 @@ import FileManager from "../pages/FileManager/index";
 
 // // Profile
 import UserProfile from "../pages/Authentication/user-profile";
+import ChangePassword from "../pages/Authentication/change-password";
 
 // Pages Calendar
 import Calendar from "../pages/Calendar/index";
@@ -203,6 +204,8 @@ const authProtectedRoutes = [
 
   //   // //profile
   { path: "/profile", component: <UserProfile /> },
+  { path: "/change-password", component: <ChangePassword /> },
+
 
   //   //Ecommerce
   {
